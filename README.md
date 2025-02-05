@@ -6,10 +6,26 @@ Built for Cursor users to import third-party library docs into their codebase to
 
 Quickly extract content from a single documentation page or an entire docs site into local markdown files.
 
+```
+                                                                 
+                                                                 
+  [Website]                                                      
+     |                                                           
+     v                                                           
+[FireCrawl API] --> [Extract URLs] --> [Scrape Content]         
+     |                                       |                   
+     v                                       v                   
+[Rate Limiting]                     [GPT-3.5 Cleaning]          
+                                           |                     
+                                           v                     
+                                   [Clean Markdown Files]        
+```
+
 ## Requirements
 
 - Python 3.11+
-- Firecrawl API key 
+- Firecrawl API key (get from https://www.firecrawl.dev/app/api-keys)
+- OpenAI API key (get from https://platform.openai.com/api-keys)
 
 ## Quick Start
 
@@ -21,8 +37,9 @@ git clone git@github.com:ObaidUr-Rahmaan/crawl-hog.git && cd crawl-hog
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# Add API key
-echo "FIRECRAWL_API_KEY=your-key-here" > .env  # Get key from https://www.firecrawl.dev/app/api-keys
+# Add API keys
+echo "FIRECRAWL_API_KEY=your-key-here" > .env  
+echo "OPENAI_API_KEY=your-key-here" >> .env
 
 # Run
 chmod +x chog.sh
@@ -33,7 +50,7 @@ chmod +x chog.sh
 ## Features
 
 - 📚 Handles any docs site (React, ReadTheDocs, GitHub Pages, etc.)
-- 🧹 Clean markdown output, no nav/ads/junk
+- 🧹 Clean markdown output via GPT-3.5, no nav/ads/junk
 - ⚡️ Fast with rate limiting & retries
 - 🎯 Smart docs detection
 - 🔍 Test mode: `--test` flag crawls max 10 pages

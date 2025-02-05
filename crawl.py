@@ -7,6 +7,7 @@ import pathlib
 from urllib.parse import urlparse, unquote
 from dotenv import load_dotenv
 from firecrawl import FirecrawlApp
+from openai import OpenAI
 
 def get_docs_patterns(url):
     """Get common documentation URL patterns based on the site"""
@@ -79,20 +80,41 @@ def sanitize_filename(url):
     # If empty (e.g. homepage), use 'index'
     return filename or 'index'
 
+def clean_markdown_with_gpt(markdown_content):
+    """Clean markdown content using GPT-3.5-turbo"""
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a markdown cleaning expert. Clean up the provided markdown by:\n1. Removing any navigation elements, headers, footers, any trailing words or anything that doesn't seem to be part of the main content.\n2. Ensuring proper heading hierarchy\n3. Fixing code block formatting\n4. Removing duplicate content\n5. Maintaining only the main content\nReturn ONLY the cleaned markdown with no explanation."
+                },
+                {
+                    "role": "user",
+                    "content": markdown_content
+                }
+            ],
+            temperature=0.1
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"Warning: GPT cleaning failed - {str(e)}")
+        return markdown_content
+
 def save_crawl_results(crawl_status, base_domain):
     """Save crawl results to individual files in a domain-specific folder"""
-    # Create the docs folder with domain name
     output_dir = pathlib.Path(f"{base_domain}-docs")
     output_dir.mkdir(exist_ok=True)
     
-    # Save a manifest file with all URLs and their file mappings
     manifest = {
         'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
         'base_domain': base_domain,
         'pages': {}
     }
     
-    # Extract pages from crawl status
     pages = crawl_status.get('pages', {})
     if not pages:
         print("Warning: No pages found in crawl results")
@@ -100,25 +122,25 @@ def save_crawl_results(crawl_status, base_domain):
     
     print(f"\nSaving {len(pages)} pages to {output_dir}...")
     
-    # Save each page to its own file
     for url, page_data in pages.items():
         if not page_data.get('markdown'):
             print(f"Skipping {url} - no markdown content found")
             continue
             
-        # Create a safe filename
         base_filename = sanitize_filename(url)
         
-        # Save markdown
+        # Clean markdown with GPT
+        print(f"Cleaning markdown for {url}...")
+        cleaned_markdown = clean_markdown_with_gpt(page_data['markdown'])
+        
         md_file = output_dir / f"{base_filename}.md"
-        md_file.write_text(page_data['markdown'])
+        md_file.write_text(cleaned_markdown)
         manifest['pages'][url] = {
             'markdown_file': str(md_file.relative_to(output_dir)),
             'title': page_data.get('metadata', {}).get('title', ''),
             'description': page_data.get('metadata', {}).get('description', '')
         }
     
-    # Save the manifest
     manifest_file = output_dir / 'manifest.json'
     manifest_file.write_text(json.dumps(manifest, indent=2))
     
