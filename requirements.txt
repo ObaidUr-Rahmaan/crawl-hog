@@ -1,0 +1,13 @@
+annotated-types==0.7.0
+certifi==2025.1.31
+charset-normalizer==3.4.1
+firecrawl-py==1.11.0
+idna==3.10
+nest-asyncio==1.6.0
+pydantic==2.10.6
+pydantic_core==2.27.2
+python-dotenv==1.0.1
+requests==2.32.3
+typing_extensions==4.12.2
+urllib3==2.3.0
+websockets==14.2
