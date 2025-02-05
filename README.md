@@ -12,6 +12,10 @@ A more reliable alternative to Cursor's built-in crawler.
 
 Quickly extract content from a single documentation page or an entire docs site into local markdown files.
 
+Powered by Firecrawl's API and OpenAI's GPT-3.5-turbo.
+
+Firecrawls gives you 500 free credits every month and GPT-3.5-turbo is dirt-cheap.
+
 ```
                                                                  
                                                                  
