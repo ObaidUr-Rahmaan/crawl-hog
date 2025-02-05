@@ -22,7 +22,7 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
 # Add API key
-echo "FIRECRAWL_API_KEY=your-key-here" > .env  # Get key from firecrawl.dev
+echo "FIRECRAWL_API_KEY=your-key-here" > .env  # Get key from https://www.firecrawl.dev/app/api-keys
 
 # Run
 chmod +x chog.sh
