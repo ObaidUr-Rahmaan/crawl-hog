@@ -17,8 +17,11 @@ fi
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
 
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Run the Python script and move results
-python crawl.py "$URL" $SINGLE_FLAG
+python "$SCRIPT_DIR/crawl.py" "$URL" $SINGLE_FLAG
 
 # Get the domain from the URL for the source folder name
 DOMAIN=$(echo "$URL" | awk -F[/:] '{print $4}')
