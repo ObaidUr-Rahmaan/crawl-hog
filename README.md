@@ -6,6 +6,11 @@ Built for Cursor users to import third-party library docs into their codebase to
 
 Quickly extract content from a single documentation page or an entire docs site into local markdown files.
 
+## Requirements
+
+- Python 3.11+
+- Firecrawl API key 
+
 ## Quick Start
 
 ```bash
@@ -48,8 +53,3 @@ output-folder/
 - `/learn/*`, `/tutorial/*`
 - `/quickstart/*`, `/getting-started/*`
 - `/examples/*`
-
-## Requirements
-
-- Python 3.11+
-- Firecrawl API key 
