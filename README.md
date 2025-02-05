@@ -14,7 +14,7 @@ Quickly extract content from a single documentation page or an entire docs site 
 
 Powered by Firecrawl's API and OpenAI's GPT-3.5-turbo.
 
-Firecrawls gives you 500 free credits every month and GPT-3.5-turbo is dirt-cheap.
+Firecrawls gives you 500 free credits every month (1 credit per page) and GPT-3.5-turbo is dirt-cheap.
 
 ```
                                                                  
