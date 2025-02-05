@@ -1,4 +1,4 @@
-# CrawlHog 🐗
+# CrawlHog
 
 Extract documentation sites into clean markdown files. Handles dynamic content and rate limits automatically.
 
