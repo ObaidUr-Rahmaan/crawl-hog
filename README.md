@@ -1,159 +1,55 @@
-# CrawlHog
+# CrawlHog 🐗
 
-A robust Documentation web scraper that effortlessly extracts content from any 3rd-party library docs site. 
+Extract documentation sites into clean markdown files. Handles dynamic content and rate limits automatically.
 
-Powered by Firecrawl to seamlessly handle dynamic content, JavaScript, and convert everything into pristine markdown.
+Built for Cursor users to import third-party library docs into their codebase to use with Composer. A more reliable alternative to Cursor's built-in crawler.
+
+Quickly extract content from a single documentation page or an entire docs site into local markdown files.
+
+## Quick Start
+
+```bash
+# Install
+git clone <repo-url> && cd docs-crawler
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+
+# Add API key
+echo "FIRECRAWL_API_KEY=your-key-here" > .env  # Get key from firecrawl.dev
+
+# Run
+chmod +x chog.sh
+./chog.sh https://docs.example.com output-folder        # Full site
+./chog.sh https://docs.example.com/page output --single # Single page
+```
 
 ## Features
 
-- Intelligent docs detection for various documentation formats
-- Clean markdown output with proper formatting
-- Handles dynamic content and JavaScript-rendered pages
-- Supports multiple documentation platforms (standard sites, ReadTheDocs, GitHub Pages)
-- Smart content filtering (removes navigation, ads, etc.)
-- Site-specific pattern matching
-- Progress feedback and error handling
-- Rate limit handling with exponential backoff
-- Individual file output for each page
-- HTML and Markdown formats
-- Test mode for quick validation
+- 📚 Handles any docs site (React, ReadTheDocs, GitHub Pages, etc.)
+- 🧹 Clean markdown output, no nav/ads/junk
+- ⚡️ Fast with rate limiting & retries
+- 🎯 Smart docs detection
+- 🔍 Test mode: `--test` flag crawls max 10 pages
 
-## Prerequisites
+## Output
 
-- Python 3.11+
-- Firecrawl API key (get it from [firecrawl.dev](https://firecrawl.dev))
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone <repo-url>
-cd docs-crawler
+```
+output-folder/
+├── manifest.json  # URLs & metadata
+├── index.md      # Homepage
+└── *.md          # All other pages
 ```
 
-2. Set up Python environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+## Supported URL Patterns
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Create a `.env` file with your Firecrawl API key:
-```bash
-FIRECRAWL_API_KEY=your-api-key-here
-```
-
-## Usage
-
-### Using the Shell Script (Recommended)
-
-Make the script executable:
-```bash
-chmod +x chog.sh
-```
-
-Then run it with a URL and output folder:
-```bash
-./chog.sh https://docs.example.com output-folder
-```
-
-### Using Python Directly
-
-Run the script with the documentation URL you want to crawl:
-
-```bash
-# Full crawl
-python crawl.py https://docs.example.com
-
-# Test mode (only crawls up to 10 pages)
-python crawl.py https://docs.example.com --test
-```
-
-## How It Works
-
-1. **Initial Scrape**
-   - Scrapes the initial URL to get all links
-   - Filters for internal links only (same domain)
-
-2. **Site Mapping**
-   - Maps the entire site structure
-   - Discovers all accessible URLs
-   - Respects rate limits with exponential backoff
-
-3. **URL Filtering**
-   - Matches URLs against common documentation patterns
-   - Handles site-specific patterns (React, ReadTheDocs, GitHub Pages)
-   - Filters out non-documentation pages
-
-4. **Content Crawling**
-   - Crawls each documentation page
-   - Extracts both Markdown and HTML content
-   - Filters out navigation, ads, and other non-content elements
-   - Handles dynamic content with wait times
-
-5. **Output Organization**
-   The script creates a folder structure like this:
-   ```
-   example.com-docs/
-   ├── manifest.json         # Contains metadata and file mappings
-   ├── index.md             # Homepage in markdown
-   ├── quick-start.md       # Other pages in markdown
-   ├── api-reference.md
-   ├── html/                # HTML versions of the pages
-   │   ├── index.html
-   │   ├── quick-start.html
-   │   └── api-reference.html
-   └── ...
-   ```
-
-   The `manifest.json` includes:
-   - Timestamp of the crawl
-   - Base domain
-   - URL to file mappings
-   - Page metadata (titles, descriptions)
-
-## Rate Limiting
-
-The script handles rate limits gracefully:
-- Automatically retries when hitting rate limits
-- Uses exponential backoff with jitter
-- Shows progress during retries
-- Configurable max retries and delays
-
-## Test Mode
-
-Use test mode for quick validation:
-```bash
-python crawl.py https://docs.example.com --test
-```
-
-Test mode:
-- Limits crawl to 10 pages maximum
-- Uses shallower depth (2 instead of 5)
-- Shows all URLs being crawled
-- Creates the same folder structure as full mode
-
-## Supported Documentation Patterns
-
-The script recognizes common documentation URL patterns:
-- `/docs/*`
-- `/documentation/*`
-- `/guide/*`
-- `/manual/*`
-- `/reference/*`
-- `/api/*`
-- `/learn/*`
-- `/tutorial/*`
-- `/quickstart/*`
-- `/getting-started/*`
+- `/docs/*`, `/documentation/*`
+- `/guide/*`, `/manual/*`
+- `/reference/*`, `/api/*`
+- `/learn/*`, `/tutorial/*`
+- `/quickstart/*`, `/getting-started/*`
 - `/examples/*`
 
-Plus site-specific patterns for:
-- ReadTheDocs
-- GitHub Pages
-- React.dev
-- And more... 
+## Requirements
+
+- Python 3.11+
+- Firecrawl API key 

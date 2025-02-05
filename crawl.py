@@ -102,31 +102,21 @@ def save_crawl_results(crawl_status, base_domain):
     
     # Save each page to its own file
     for url, page_data in pages.items():
-        if not page_data.get('markdown') and not page_data.get('html'):
-            print(f"Skipping {url} - no content found")
+        if not page_data.get('markdown'):
+            print(f"Skipping {url} - no markdown content found")
             continue
             
         # Create a safe filename
         base_filename = sanitize_filename(url)
         
-        # Save markdown if available
-        if page_data.get('markdown'):
-            md_file = output_dir / f"{base_filename}.md"
-            md_file.write_text(page_data['markdown'])
-            manifest['pages'][url] = {
-                'markdown_file': str(md_file.relative_to(output_dir)),
-                'title': page_data.get('metadata', {}).get('title', ''),
-                'description': page_data.get('metadata', {}).get('description', '')
-            }
-        
-        # Optionally save HTML in a separate subfolder
-        if page_data.get('html'):
-            html_dir = output_dir / 'html'
-            html_dir.mkdir(exist_ok=True)
-            html_file = html_dir / f"{base_filename}.html"
-            html_file.write_text(page_data['html'])
-            if url in manifest['pages']:
-                manifest['pages'][url]['html_file'] = str(html_file.relative_to(output_dir))
+        # Save markdown
+        md_file = output_dir / f"{base_filename}.md"
+        md_file.write_text(page_data['markdown'])
+        manifest['pages'][url] = {
+            'markdown_file': str(md_file.relative_to(output_dir)),
+            'title': page_data.get('metadata', {}).get('title', ''),
+            'description': page_data.get('metadata', {}).get('description', '')
+        }
     
     # Save the manifest
     manifest_file = output_dir / 'manifest.json'
@@ -145,13 +135,14 @@ def normalize_url(url):
         normalized = normalized.rstrip('/')
     return normalized
 
-def crawl_docs(url, test_mode=False):
+def crawl_docs(url, test_mode=False, single_mode=False):
     """
     Crawl documentation pages from a given URL
     
     Args:
         url (str): The base URL to crawl
         test_mode (bool): If True, only crawl up to 10 pages
+        single_mode (bool): If True, only crawl the given URL without recursion
     """
     # Load environment variables
     load_dotenv()
@@ -164,18 +155,30 @@ def crawl_docs(url, test_mode=False):
     url = normalize_url(url)
 
     try:
-        # First try to scrape the initial URL to get links
-        print("Getting initial page links...")
+        # First try to scrape the initial URL
+        print("Getting initial page...")
         initial_scrape = retry_with_backoff(
             lambda: app.scrape_url(
                 url,
                 params={
-                    'formats': ['links', 'markdown', 'html'],
-                    'onlyMainContent': False  # We want all links including nav
+                    'formats': ['links', 'markdown'],
+                    'onlyMainContent': False if not single_mode else True
                 }
             )
         )
         
+        # In single mode, we only save this page and exit
+        if single_mode:
+            pages = {
+                url: {
+                    'markdown': initial_scrape.get('markdown', ''),
+                    'metadata': initial_scrape.get('metadata', {})
+                }
+            }
+            save_crawl_results({'pages': pages}, base_domain)
+            print("\nSingle page crawl completed!")
+            return
+
         # Extract URLs from initial scrape (only internal links)
         initial_urls = [
             normalize_url(u) for u in initial_scrape.get('links', [])
@@ -245,10 +248,9 @@ def crawl_docs(url, test_mode=False):
         
         # Start with the initial page content
         pages = {}
-        if initial_scrape.get('markdown') or initial_scrape.get('html'):
+        if initial_scrape.get('markdown'):
             pages[url] = {
                 'markdown': initial_scrape.get('markdown', ''),
-                'html': initial_scrape.get('html', ''),
                 'metadata': initial_scrape.get('metadata', {})
             }
         
@@ -263,7 +265,7 @@ def crawl_docs(url, test_mode=False):
                     lambda: app.scrape_url(
                         page_url,
                         params={
-                            'formats': ['markdown', 'html'],
+                            'formats': ['markdown'],
                             'onlyMainContent': True,
                             'includeTags': [
                                 'article', 'main', '.content', '.documentation',
@@ -280,7 +282,6 @@ def crawl_docs(url, test_mode=False):
                 )
                 pages[page_url] = {
                     'markdown': page_result.get('markdown', ''),
-                    'html': page_result.get('html', ''),
                     'metadata': page_result.get('metadata', {})
                 }
             except Exception as e:
@@ -297,13 +298,16 @@ def crawl_docs(url, test_mode=False):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python crawl.py <docs_url> [--test]")
+        print("Usage: python crawl.py <docs_url> [--test] [--single]")
         sys.exit(1)
     
     test_mode = "--test" in sys.argv
+    single_mode = "--single" in sys.argv
     url = sys.argv[1]
     
     if test_mode:
         print("Running in test mode (max 10 pages)")
+    elif single_mode:
+        print("Running in single page mode")
     
-    crawl_docs(url, test_mode) 
+    crawl_docs(url, test_mode, single_mode) 
