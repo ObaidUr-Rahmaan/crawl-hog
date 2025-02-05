@@ -3,7 +3,8 @@ import json
 import sys
 import time
 import random
-from urllib.parse import urlparse
+import pathlib
+from urllib.parse import urlparse, unquote
 from dotenv import load_dotenv
 from firecrawl import FirecrawlApp
 
@@ -69,6 +70,81 @@ def retry_with_backoff(func, max_retries=5):
             else:
                 raise
 
+def sanitize_filename(url):
+    """Convert URL path to a safe filename"""
+    # Get the path part of the URL and decode any URL encoding
+    path = unquote(urlparse(url).path)
+    # Remove leading/trailing slashes and replace internal ones with dashes
+    filename = path.strip('/').replace('/', '-')
+    # If empty (e.g. homepage), use 'index'
+    return filename or 'index'
+
+def save_crawl_results(crawl_status, base_domain):
+    """Save crawl results to individual files in a domain-specific folder"""
+    # Create the docs folder with domain name
+    output_dir = pathlib.Path(f"{base_domain}-docs")
+    output_dir.mkdir(exist_ok=True)
+    
+    # Save a manifest file with all URLs and their file mappings
+    manifest = {
+        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+        'base_domain': base_domain,
+        'pages': {}
+    }
+    
+    # Extract pages from crawl status
+    pages = crawl_status.get('pages', {})
+    if not pages:
+        print("Warning: No pages found in crawl results")
+        return
+    
+    print(f"\nSaving {len(pages)} pages to {output_dir}...")
+    
+    # Save each page to its own file
+    for url, page_data in pages.items():
+        if not page_data.get('markdown') and not page_data.get('html'):
+            print(f"Skipping {url} - no content found")
+            continue
+            
+        # Create a safe filename
+        base_filename = sanitize_filename(url)
+        
+        # Save markdown if available
+        if page_data.get('markdown'):
+            md_file = output_dir / f"{base_filename}.md"
+            md_file.write_text(page_data['markdown'])
+            manifest['pages'][url] = {
+                'markdown_file': str(md_file.relative_to(output_dir)),
+                'title': page_data.get('metadata', {}).get('title', ''),
+                'description': page_data.get('metadata', {}).get('description', '')
+            }
+        
+        # Optionally save HTML in a separate subfolder
+        if page_data.get('html'):
+            html_dir = output_dir / 'html'
+            html_dir.mkdir(exist_ok=True)
+            html_file = html_dir / f"{base_filename}.html"
+            html_file.write_text(page_data['html'])
+            if url in manifest['pages']:
+                manifest['pages'][url]['html_file'] = str(html_file.relative_to(output_dir))
+    
+    # Save the manifest
+    manifest_file = output_dir / 'manifest.json'
+    manifest_file.write_text(json.dumps(manifest, indent=2))
+    
+    print(f"Saved {len(manifest['pages'])} files to {output_dir}")
+    print(f"Manifest saved to {manifest_file}")
+
+def normalize_url(url):
+    """Normalize URL to use https and remove trailing slashes"""
+    parsed = urlparse(url)
+    # Force https
+    normalized = f"https://{parsed.netloc}{parsed.path}"
+    # Remove trailing slash unless it's just the domain
+    if normalized.endswith('/') and len(normalized) > 8:
+        normalized = normalized.rstrip('/')
+    return normalized
+
 def crawl_docs(url, test_mode=False):
     """
     Crawl documentation pages from a given URL
@@ -83,6 +159,9 @@ def crawl_docs(url, test_mode=False):
     # Initialize Firecrawl
     app = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
     base_domain = urlparse(url).netloc
+    
+    # Normalize input URL
+    url = normalize_url(url)
 
     try:
         # First try to scrape the initial URL to get links
@@ -91,7 +170,7 @@ def crawl_docs(url, test_mode=False):
             lambda: app.scrape_url(
                 url,
                 params={
-                    'formats': ['links'],
+                    'formats': ['links', 'markdown', 'html'],
                     'onlyMainContent': False  # We want all links including nav
                 }
             )
@@ -99,7 +178,7 @@ def crawl_docs(url, test_mode=False):
         
         # Extract URLs from initial scrape (only internal links)
         initial_urls = [
-            u for u in initial_scrape.get('links', [])
+            normalize_url(u) for u in initial_scrape.get('links', [])
             if urlparse(u).netloc == base_domain
         ]
         print(f"\nFound {len(initial_urls)} internal links on initial page:")
@@ -131,12 +210,12 @@ def crawl_docs(url, test_mode=False):
         
         # Combine URLs from both initial scrape and map (only internal links)
         all_urls = set(initial_urls + [
-            u for u in map_result.get('links', [])
+            normalize_url(u) for u in map_result.get('links', [])
             if urlparse(u).netloc == base_domain
         ])
         print(f"\nFound {len(all_urls)} total unique internal URLs")
         print("Sample URLs found:")
-        for u in list(all_urls)[:5]:
+        for u in sorted(list(all_urls))[:5]:
             print(f"  - {u}")
         
         # Filter for documentation URLs using multiple common patterns
@@ -164,45 +243,53 @@ def crawl_docs(url, test_mode=False):
         for u in doc_urls:  # Show all in test mode, or first 10 in normal mode
             print(f"  - {u}")
         
-        # Crawl all documentation pages
-        crawl_status = retry_with_backoff(
-            lambda: app.crawl_url(
-                url,
-                params={
-                    'limit': len(doc_urls) + 1,
-                    'maxDepth': 2 if test_mode else 5,
-                    'includePaths': [urlparse(u).path for u in doc_urls],
-                    'excludePaths': [
-                        '.*/blog/.*',
-                        '.*/legal/.*',
-                        '.*/terms/.*'
-                    ],
-                    'allowBackwardLinks': True,
-                    'allowExternalLinks': False,
-                    'scrapeOptions': {
-                        'formats': ['markdown', 'html'],
-                        'onlyMainContent': True,
-                        'includeTags': [
-                            'article', 'main', '.content', '.documentation',
-                            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                            'p', 'ul', 'ol', 'li', 'code', 'pre'
-                        ],
-                        'excludeTags': [
-                            'nav', 'header', 'footer',
-                            '.sidebar', '.menu', '.navigation'
-                        ],
-                        'waitFor': 2000
-                    }
-                },
-                poll_interval=30
-            )
-        )
+        # Start with the initial page content
+        pages = {}
+        if initial_scrape.get('markdown') or initial_scrape.get('html'):
+            pages[url] = {
+                'markdown': initial_scrape.get('markdown', ''),
+                'html': initial_scrape.get('html', ''),
+                'metadata': initial_scrape.get('metadata', {})
+            }
+        
+        # Crawl remaining pages
+        for page_url in doc_urls:
+            if page_url == url:  # Skip initial URL as we already have it
+                continue
+                
+            print(f"\nCrawling {page_url}...")
+            try:
+                page_result = retry_with_backoff(
+                    lambda: app.scrape_url(
+                        page_url,
+                        params={
+                            'formats': ['markdown', 'html'],
+                            'onlyMainContent': True,
+                            'includeTags': [
+                                'article', 'main', '.content', '.documentation',
+                                'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                                'p', 'ul', 'ol', 'li', 'code', 'pre'
+                            ],
+                            'excludeTags': [
+                                'nav', 'header', 'footer',
+                                '.sidebar', '.menu', '.navigation'
+                            ],
+                            'waitFor': 2000
+                        }
+                    )
+                )
+                pages[page_url] = {
+                    'markdown': page_result.get('markdown', ''),
+                    'html': page_result.get('html', ''),
+                    'metadata': page_result.get('metadata', {})
+                }
+            except Exception as e:
+                print(f"Error crawling {page_url}: {str(e)}")
+                continue
 
-        # Save the results to output.json
-        with open('output.json', 'w') as f:
-            json.dump(crawl_status, f, indent=2)
-            
-        print("Crawl completed successfully!")
+        # Save results to individual files
+        save_crawl_results({'pages': pages}, base_domain)
+        print("\nCrawl completed successfully!")
         
     except Exception as e:
         print(f"Error during crawl: {str(e)}")

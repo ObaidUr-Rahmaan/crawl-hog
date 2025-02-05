@@ -13,6 +13,10 @@ Powered by Firecrawl to seamlessly handle dynamic content, JavaScript, and conve
 - Smart content filtering (removes navigation, ads, etc.)
 - Site-specific pattern matching
 - Progress feedback and error handling
+- Rate limit handling with exponential backoff
+- Individual file output for each page
+- HTML and Markdown formats
+- Test mode for quick validation
 
 ## Prerequisites
 
@@ -48,31 +52,94 @@ FIRECRAWL_API_KEY=your-api-key-here
 Run the script with the documentation URL you want to crawl:
 
 ```bash
+# Full crawl
 python crawl.py https://docs.example.com
+
+# Test mode (only crawls up to 10 pages)
+python crawl.py https://docs.example.com --test
 ```
 
-The script will:
-1. Map the website structure
-2. Identify documentation pages
-3. Crawl and extract content
-4. Save results to `output.json`
+## How It Works
 
-## Output
+1. **Initial Scrape**
+   - Scrapes the initial URL to get all links
+   - Filters for internal links only (same domain)
 
-The script generates an `output.json` file containing:
-- Markdown content for each page
-- HTML content (if requested)
-- Page metadata
-- Link structure
-- Crawl statistics
+2. **Site Mapping**
+   - Maps the entire site structure
+   - Discovers all accessible URLs
+   - Respects rate limits with exponential backoff
 
-## Advanced Configuration
+3. **URL Filtering**
+   - Matches URLs against common documentation patterns
+   - Handles site-specific patterns (React, ReadTheDocs, GitHub Pages)
+   - Filters out non-documentation pages
 
-The script includes several optimizations:
-- Custom tag inclusion/exclusion
-- Dynamic content handling
-- Timeout settings
-- Domain restrictions
-- Path filtering
+4. **Content Crawling**
+   - Crawls each documentation page
+   - Extracts both Markdown and HTML content
+   - Filters out navigation, ads, and other non-content elements
+   - Handles dynamic content with wait times
 
-Modify these in the `crawl.py` script if needed. 
+5. **Output Organization**
+   The script creates a folder structure like this:
+   ```
+   example.com-docs/
+   ├── manifest.json         # Contains metadata and file mappings
+   ├── index.md             # Homepage in markdown
+   ├── quick-start.md       # Other pages in markdown
+   ├── api-reference.md
+   ├── html/                # HTML versions of the pages
+   │   ├── index.html
+   │   ├── quick-start.html
+   │   └── api-reference.html
+   └── ...
+   ```
+
+   The `manifest.json` includes:
+   - Timestamp of the crawl
+   - Base domain
+   - URL to file mappings
+   - Page metadata (titles, descriptions)
+
+## Rate Limiting
+
+The script handles rate limits gracefully:
+- Automatically retries when hitting rate limits
+- Uses exponential backoff with jitter
+- Shows progress during retries
+- Configurable max retries and delays
+
+## Test Mode
+
+Use test mode for quick validation:
+```bash
+python crawl.py https://docs.example.com --test
+```
+
+Test mode:
+- Limits crawl to 10 pages maximum
+- Uses shallower depth (2 instead of 5)
+- Shows all URLs being crawled
+- Creates the same folder structure as full mode
+
+## Supported Documentation Patterns
+
+The script recognizes common documentation URL patterns:
+- `/docs/*`
+- `/documentation/*`
+- `/guide/*`
+- `/manual/*`
+- `/reference/*`
+- `/api/*`
+- `/learn/*`
+- `/tutorial/*`
+- `/quickstart/*`
+- `/getting-started/*`
+- `/examples/*`
+
+Plus site-specific patterns for:
+- ReadTheDocs
+- GitHub Pages
+- React.dev
+- And more... 
