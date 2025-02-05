@@ -17,7 +17,7 @@ Quickly extract content from a single documentation page or an entire docs site 
 # Install
 pyenv install 3.11.0
 pyenv local 3.11.0
-git clone <repo-url> && cd docs-crawler
+git clone <repo-url> && cd crawl-hog
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
