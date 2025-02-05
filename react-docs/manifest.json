@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-02-05 16:13:52",
+  "base_domain": "react.dev",
+  "pages": {
+    "https://react.dev/learn/describing-the-ui": {
+      "markdown_file": "learn-describing-the-ui.md",
+      "title": "Describing the UI \u2013 React",
+      "description": ""
+    }
+  }
+}

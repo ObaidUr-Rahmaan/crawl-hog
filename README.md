@@ -1,8 +1,14 @@
 # CrawlHog
 
-Extract documentation sites into clean markdown files. Handles dynamic content and rate limits automatically.
+Problem: Cursor's docs indexer is buggy and doesn't work very well for a lot of docs sites.
 
-Built for Cursor users to import third-party library docs into their codebase to use with Composer. A more reliable alternative to Cursor's built-in crawler.
+That's where CrawlHog comes in. Easily extract documentation sites into clean markdown files with a single command. 
+
+Handles dynamic content and rate limits automatically.
+
+Built for AI power users to import third-party library docs into their codebase to use with Composer (or any other LLM AI-powered IDE).
+
+A more reliable alternative to Cursor's built-in crawler.
 
 Quickly extract content from a single documentation page or an entire docs site into local markdown files.
 
