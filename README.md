@@ -49,6 +49,20 @@ FIRECRAWL_API_KEY=your-api-key-here
 
 ## Usage
 
+### Using the Shell Script (Recommended)
+
+Make the script executable:
+```bash
+chmod +x chog.sh
+```
+
+Then run it with a URL and output folder:
+```bash
+./chog.sh https://docs.example.com output-folder
+```
+
+### Using Python Directly
+
 Run the script with the documentation URL you want to crawl:
 
 ```bash
